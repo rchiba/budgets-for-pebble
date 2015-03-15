@@ -17,7 +17,14 @@ var cents = 0;
 var dollarElement;
 var centElement;
 var selectionState = 0;
-var transactionTypes = ['Food', 'Transit', 'Fun'];
+var budgets = [
+  {type: 'Food', money: 1000},
+  {type: 'Transit', money: 2000},
+  {type: 'Fun', money: 3000}
+];
+var screenX = 144;
+var screenY = 168;
+
 var monthNames = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
@@ -48,7 +55,7 @@ function renderSplashWindow(){
     dollarElement = new UI.Text({
       position: new Vector2(5, 50),
       size: new Vector2(85, 55),
-      font:'BITHAM_42_BOLD',
+      font:dollarFont,
       textOverflow:'wrap',
       textAlign:'left',
     });
@@ -93,17 +100,24 @@ function renderSplashWindow(){
   } else{
     centText = '.' + cents;
   }
+
+  var dollarFont = 'BITHAM_42_BOLD';
+  console.log('dollars: '+dollars);
+  if(dollars >= 100){
+    dollarFont = 'BITHAM_30_BLACK';
+  }
+  console.log('dollarfont: '+dollarFont);
   
-  dollarElement.text(dollarText).color(dollarColor).backgroundColor(dollarBG);
+  dollarElement.text(dollarText).color(dollarColor).backgroundColor(dollarBG).font(dollarFont);
   centElement.text(centText).color(centColor).backgroundColor(centBG);
   
 }
 
-function renderTransactionTypeMenu(){
+function renderExpenseTypeMenu(){
   
   var items = [];
-  for(var i = 0; i < transactionTypes.length; i++){
-    items.push({title: transactionTypes[i]});
+  for(var i = 0; i < budgets.length; i++){
+    items.push({title: budgets[i].type});
   }
   
   var menu = new UI.Menu({
@@ -134,7 +148,7 @@ splashWindow.on('click', 'back', function(e){
 
 splashWindow.on('click', 'select', function(e){
   if(selectionState === 1){
-    renderTransactionTypeMenu();
+    renderExpenseTypeMenu();
   } else{
     selectionState++;
     renderSplashWindow();
@@ -236,12 +250,13 @@ function trackExpense(money, type){
 function renderAppMainMenu(e){
   var menu = new UI.Menu({
     sections: [{
-      items: [{
+      items: [
+      {
+        title: 'Budgets'
+      },{
         title: 'Track Expense'
       }, {
         title: 'Expenses'
-      },{
-        title: 'Budgets'
       }]
     }]
   });
@@ -251,7 +266,8 @@ function renderAppMainMenu(e){
     } else if(e.item.title === 'Expenses'){
       renderExpensesSummaryMenu();
     } else if(e.item.title === 'Budgets'){
-      
+      var currentMonth = monthNames[new Date().getMonth()];
+      renderBudget(currentMonth);
     }
   });
   menu.show();
@@ -363,6 +379,126 @@ function renderExpenses(month, type){
   });
 
   menu.show();
+}
+
+function renderBudget(month){
+  console.log('renderBudget: '+month);
+  var expenses = getItem('expenses');
+  expenses = _.filter(expenses, function(expense){ return monthNames[new Date(expense.timestamp).getMonth()] === month; });
+
+  var budgetWindow = new UI.Window({
+    scrollable: true
+  });
+
+  if(budgets.length === 0){
+    var title = new UI.Text({
+      position: new Vector2(padding, 0),
+      size: new Vector2(screenX, screenY),
+      text: 'Add budgets via the settings on phone to see them here.',
+      font:'GOTHIC_18_BOLD',
+      color:'white',
+      textOverflow:'wrap',
+      textAlign:'left',
+      backgroundColor:'clear'
+    });
+    budgetWindow.add(title);
+    budgetWindow.show(title);
+  } else {
+    // add total
+    console.log('about to add total');
+    addBudgetItem(budgetWindow, 0, 'Total', expenses);
+
+    // add categories
+    _.each(budgets, function(budget, index){
+      var type = budget.type;
+      var expensesOfType = _.filter(expenses, function(expense){ return expense.type === budget.type });
+      addBudgetItem(budgetWindow, (index+1) * 50, type, expensesOfType);
+    });
+  }
+}
+
+function addBudgetItem(wind, verticalOffset, type, expenses){
+  console.log('addBudgetItem: '+JSON.stringify(type)+'|'+JSON.stringify(expenses));
+  var budget;
+  var expenseTotal;
+  var padding = 10;
+
+  if(typeof expenses !== 'undefined' && expenses.length > 0){
+    console.log('adding all expenses');
+    expenseTotal = _.reduce(_.map(expenses, function(expense){ return expense.money; }), function(memo, num){ return memo + num; });
+  } else{
+    console.log('no expenses');
+    expenseTotal = 0;
+  }
+
+  if( type === 'Total' ){
+    // total - add all budget monies together
+    console.log('Budgets: '+JSON.stringify(budgets));
+    budgetMoney = _.reduce(budgets, function(memo, num){ return memo + num.money; }, budgets[0].money);
+  } else{
+    // type - get money for that specific budget
+    budgetMoney = _.findWhere(budgets,{ type: type }).money;
+  }
+
+  console.log('Type: '+type);
+  console.log('Budget: '+JSON.stringify(budgetMoney));
+
+  var title = new UI.Text({
+    position: new Vector2(padding, verticalOffset),
+    size: new Vector2(screenX, 20),
+    text:type,
+    font:'GOTHIC_18_BOLD',
+    color:'white',
+    textOverflow:'wrap',
+    textAlign:'left',
+    backgroundColor:'clear'
+  });
+
+  var barY = verticalOffset + 38;
+  var barX = padding;
+  var barHeight = 10;
+  var barWidth = screenX - padding * 2;
+  var fillPercent = (expenseTotal > budgetMoney) ? 1 : expenseTotal / budgetMoney;
+
+  console.log('Fill percent: '+expenseTotal+' / '+budgetMoney+': '+fillPercent);
+
+  var bar = new UI.Rect({
+    position: new Vector2(barX, barY),
+    size: new Vector2(barWidth, barHeight),
+    backgroundColor: 'black',
+    borderColor: 'white'
+  });
+
+  var filledBar = new UI.Rect({
+    position: new Vector2(barX, barY),
+    size: new Vector2(0, barHeight),
+    backgroundColor: 'white',
+    borderColor: 'white'
+  });
+
+  var subtitleWidth = 100;
+  var subtitleHeight = 20;
+  var subtitle = new UI.Text({
+    position: new Vector2(barX + barWidth - subtitleWidth, barY - subtitleHeight),
+    size: new Vector2(subtitleWidth, subtitleHeight),
+    text: formatMoney(expenseTotal) + ' of ' + formatMoney(budgetMoney),
+    font: 'GOTHIC_14',
+    color: 'white',
+    textAlign: 'right',
+    backgroundColor: 'clear'
+  });
+
+  wind.add(title);
+  wind.add(bar);
+  wind.add(filledBar);
+  wind.add(subtitle);
+
+  wind.show(title);
+  wind.show(bar);
+  wind.show(filledBar);
+  wind.show(subtitle);
+
+  filledBar.animate('size', new Vector2(Math.floor(barWidth * fillPercent), barHeight), 700);
 }
 
 main();
