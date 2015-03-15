@@ -10,25 +10,45 @@ var Vibe = require('ui/vibe');
 var Settings = require('settings');
 _ = require('lib/underscore.js');
 
-// Show splash screen while waiting for data
 var splashWindow = new UI.Window();
 var dollars = 0;
 var cents = 0;
 var dollarElement;
 var centElement;
 var selectionState = 0;
-var budgets = [
+var defaultBudgets = [
   {type: 'Food', money: 1000},
   {type: 'Transit', money: 2000},
   {type: 'Fun', money: 3000}
 ];
+var budgets = Settings.option('budgets');
 var screenX = 144;
 var screenY = 168;
-
 var monthNames = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
 ];
+
+// If budget is not saved in settings, save default budgets
+if(!budgets){
+  Settings.option('budgets', JSON.stringify(defaultBudgets));
+  budgets = defaultBudgets;
+}
+var settingsUrl = 'http://ryochiba.com/projects/budgets-for-pebble/settings.html?budgets=' + encodeURIComponent(JSON.stringify(budgets));
+
+Settings.config(
+  { url: settingsUrl },
+  function(e) {
+    console.log('opening configurable');
+  },
+  function(e) {
+    console.log('closed configurable');
+    console.log('Options: ' + JSON.stringify(e.options));
+
+    if(e.options.budgets)
+    Settings.option('budgets', e.options.budgets);
+  }
+);
 
 function main(){
   renderSplashWindow();
