@@ -28,6 +28,7 @@ var monthNames = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
 ];
+var successMessages = ['Awesome!', 'Great job!', 'You got it!', 'Yay!', 'F*ck Yea!', 'Wut wut!', 'Nice!', 'Sweet!', 'Hi five!'];
 
 // If budget is not saved in settings, save default budgets
 if(!budgets){
@@ -167,6 +168,11 @@ splashWindow.on('click', 'back', function(e){
 });
 
 splashWindow.on('click', 'select', function(e){
+  if(typeof fastInterval !== 'undefined'){
+    clearInterval(fastInterval);
+    fastInterval = undefined;
+  } 
+
   if(selectionState === 1){
     renderExpenseTypeMenu();
   } else{
@@ -256,15 +262,53 @@ function trackExpense(money, type){
   expenses.push(expense);
   setItem('expenses', expenses );
   
-  var successCard = new UI.Card({
-    title: 'Expense Tracked!',
-    banner: 'images/check.png'
-  });
-  successCard.show();
+  
   Vibe.vibrate('short');
-  setTimeout(function(){
-    successCard.hide();
-  }, 1000);
+  renderSuccessWindow(expense);
+}
+
+function renderSuccessWindow(expense){
+  var successWindow = new UI.Window();
+  var successMessage = successMessages[Math.floor(Math.random()*successMessages.length)];
+
+  var successMessageText = new UI.Text({
+    position: new Vector2(0, 0),
+    size: new Vector2(screenX, 20),
+    text:successMessage,
+    font:'GOTHIC_14',
+    color:'white',
+    textOverflow:'wrap',
+    textAlign:'center',
+    backgroundColor:'clear'
+  });
+
+  var expenses = getItem('expenses');
+  expenses = _.filter(expenses, function(fexpense){ return new Date(fexpense.timestamp).getMonth() === new Date().getMonth() && fexpense.type === expense.type; });
+  expensesTotal = _.reduce(expenses, function(mod, num){ return mod + num.money }, expenses[0].money);
+  budgetMoney = _.findWhere(budgets,{ type: expense.type }).money;
+  moneyLeft = budgetMoney - expensesTotal;
+  addBudgetItem(successWindow, 80, expense.type, expenses);
+
+  var infoText = new UI.Text({
+    position: new Vector2(0, 130),
+    size: new Vector2(screenX, 30),
+    text: 'You have ' + formatMoney(moneyLeft) + ' left in your ' + expense.type + ' budget',
+    font:'GOTHIC_14',
+    color:'white',
+    textOverflow:'wrap',
+    textAlign:'center',
+    backgroundColor:'clear'
+  });
+
+  successWindow.add(successMessageText);
+  successWindow.add(infoText);
+  successWindow.show(successMessageText);
+  successWindow.show(infoText);
+
+  successWindow.on('click', 'select', function(){
+    successWindow.hide();
+  });
+
 }
 
 function renderAppMainMenu(e){
@@ -282,7 +326,7 @@ function renderAppMainMenu(e){
   });
   menu.on('select', function(e) {
     if(e.item.title === 'Track Expense'){
-      renderSplashWindow();
+      menu.hide();
     } else if(e.item.title === 'Expenses'){
       renderExpensesSummaryMenu();
     } else if(e.item.title === 'Budgets'){
