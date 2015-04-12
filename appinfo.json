@@ -36,6 +36,16 @@
         "file": "images/check.png"
       },
       {
+        "type": "png",
+        "name": "SMALL_CHECK",
+        "file": "images/smallcheck.png"
+      },
+      {
+        "type": "png",
+        "name": "SMALL_X",
+        "file": "images/smallx.png"
+      },
+      {
         "type": "font",
         "name": "MONO_FONT_14",
         "file": "fonts/UbuntuMono-Regular.ttf"

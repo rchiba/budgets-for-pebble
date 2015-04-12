@@ -171,7 +171,7 @@ splashWindow.on('click', 'select', function(e){
   if(typeof fastInterval !== 'undefined'){
     clearInterval(fastInterval);
     fastInterval = undefined;
-  } 
+  }
 
   if(selectionState === 1){
     renderExpenseTypeMenu();
@@ -284,13 +284,13 @@ function renderSuccessWindow(expense){
 
   var expenses = getItem('expenses');
   expenses = _.filter(expenses, function(fexpense){ return new Date(fexpense.timestamp).getMonth() === new Date().getMonth() && fexpense.type === expense.type; });
-  expensesTotal = _.reduce(expenses, function(mod, num){ return mod + num.money }, expenses[0].money);
+  expensesTotal = _.reduce(expenses, function(mod, num){ return mod + num.money; }, 0);
   budgetMoney = _.findWhere(budgets,{ type: expense.type }).money;
   moneyLeft = budgetMoney - expensesTotal;
-  addBudgetItem(successWindow, 80, expense.type, expenses);
+  addBudgetItem(successWindow, 20, expense.type, expenses);
 
   var infoText = new UI.Text({
-    position: new Vector2(0, 130),
+    position: new Vector2(0, 70),
     size: new Vector2(screenX, 30),
     text: 'You have ' + formatMoney(moneyLeft) + ' left in your ' + expense.type + ' budget',
     font:'GOTHIC_14',
@@ -321,6 +321,8 @@ function renderAppMainMenu(e){
         title: 'Track Expense'
       }, {
         title: 'Expenses'
+      }, {
+        title: 'Reset Data'
       }]
     }]
   });
@@ -332,6 +334,8 @@ function renderAppMainMenu(e){
     } else if(e.item.title === 'Budgets'){
       var currentMonth = monthNames[new Date().getMonth()];
       renderBudget(currentMonth);
+    } else if(e.item.title === 'Reset Data'){
+      renderResetConfirmation();
     }
   });
   menu.show();
@@ -445,6 +449,33 @@ function renderExpenses(month, type){
   menu.show();
 }
 
+function renderResetConfirmation(){
+  var card = new UI.Card({
+    title: 'Are you sure?',
+    subtitle: 'This will remove all of your transactions PERMANENTLY.',
+    action: {
+      up: 'SMALL_CHECK',
+      down: 'SMALL_X'
+    }
+  });
+  card.on('click', 'up', function(){
+    localStorage.clear();
+    Vibe.vibrate('short');
+    var confirmation = new UI.Card({
+      title: 'Transactions erased'
+    });
+    confirmation.show();
+    setTimeout(function(){
+      confirmation.hide();
+      card.hide();
+    }, 1000);
+  });
+  card.on('click', 'down', function(){
+    card.close();
+  });
+  card.show();
+}
+
 function renderBudget(month){
   console.log('renderBudget: '+month);
   var expenses = getItem('expenses');
@@ -475,7 +506,7 @@ function renderBudget(month){
     // add categories
     _.each(budgets, function(budget, index){
       var type = budget.type;
-      var expensesOfType = _.filter(expenses, function(expense){ return expense.type === budget.type });
+      var expensesOfType = _.filter(expenses, function(expense){ return expense.type === budget.type; });
       addBudgetItem(budgetWindow, (index+1) * 50, type, expensesOfType);
     });
   }
